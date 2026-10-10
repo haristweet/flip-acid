@@ -2,375 +2,724 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black">
-<title>FlipPad probe</title>
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FLIP ACID">
+<meta name="theme-color" content="#14161a">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>FLIP ACID</title>
 <style>
   :root {
-    --panel: #17181a;
-    --body: #b9b7b0;
-    --body-dim: #97958e;
-    --ink: #f2f0ea;
-    --orange: #e2611b;
-    --led: #ff3b1f;
-    --led-off: #4a2b25;
-    --rule: #2e3033;
+    --alu:       #b6b2aa;
+    --alu-hi:    #d2cec6;
+    --alu-lo:    #8b8780;
+    --ink:       #45423c;
+    --ink-soft:  #6d6960;
+    --window:    #14161a;
+    --grid:      #272b31;
+    --trace:     #ff6a1f;
+    --ghost:     #6d4027;
+    --knob:      #24262a;
+    --knob-edge: #0d0e10;
+    --led:       #ff3b1f;
+    --led-dim:   #512a20;
+    --led-acc:   #ffd24a;
   }
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { margin: 0; height: 100%; }
-  body {
-    background: var(--body);
-    color: var(--ink);
-    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-    font-size: 15px;
-    line-height: 1.45;
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    background: var(--window);
+    touch-action: none;
     overscroll-behavior: none;
-    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
   }
 
-  /* ruler runs the full height so you can read off where the pad covers the screen */
-  .ruler {
-    position: fixed; top: 0; right: 0; bottom: 0; width: 54px;
-    border-left: 1px solid rgba(0,0,0,.25);
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+    color: var(--ink);
+  }
+
+  /* ---------- the panel ---------- */
+
+  /* The pad covers the bottom of the screen, so the panel lives in the strip
+     above it. --lid is how tall that strip is: measured on a 16 Pro Max,
+     adjustable on the device with L2 + up/down. */
+  #rig {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: var(--lid, 575px);
+    padding-top: env(safe-area-inset-top);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background:
+      linear-gradient(176deg, var(--alu-hi) 0%, var(--alu) 22%, var(--alu) 72%, var(--alu-lo) 100%);
+  }
+  /* brushed texture */
+  #rig::before {
+    content: "";
+    position: absolute; inset: 0;
     background: repeating-linear-gradient(
-      to bottom,
-      rgba(0,0,0,.06) 0 1px,
-      transparent 1px 50px
-    );
-    pointer-events: none; z-index: 5;
-  }
-  .ruler b {
-    position: absolute; right: 6px;
-    font: 500 11px/1 ui-monospace, Menlo, monospace;
-    color: #5c5a54;
-    transform: translateY(-1px);
+      93deg,
+      rgba(255,255,255,.045) 0 1px,
+      rgba(0,0,0,.035) 1px 2px,
+      transparent 2px 4px);
+    pointer-events: none;
   }
 
-  main { padding: 14px 60px 40px 14px; }
+  header {
+    flex: none;
+    height: 34px;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 0 16px;
+    position: relative;
+  }
+  .wordmark {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: .22em;
+    color: var(--ink);
+  }
+  .wordmark em {
+    font-style: normal;
+    font-weight: 400;
+    color: var(--ink-soft);
+    letter-spacing: .1em;
+    margin-left: .5em;
+    font-size: 10px;
+  }
+  #layer {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .14em;
+    color: var(--ink-soft);
+  }
+  #layer.hot { color: #b8431a; }
 
-  h1 {
-    font-size: 13px; font-weight: 600; letter-spacing: .02em;
-    color: #4e4c46; margin: 0 0 10px;
+  /* ---------- display window ---------- */
+
+  .window {
+    flex: none;
+    margin: 0 12px;
+    height: 170px;
+    background: var(--window);
+    border-radius: 2px;
+    box-shadow:
+      inset 0 2px 5px rgba(0,0,0,.85),
+      0 1px 0 rgba(255,255,255,.4);
+    position: relative;
+    overflow: hidden;
+  }
+  #scope { display: block; width: 100%; height: 100%; }
+
+  .readout {
+    position: absolute;
+    left: 10px; top: 8px;
+    font: 500 11px/1.5 ui-monospace, "SF Mono", Menlo, monospace;
+    color: #8c8176;
+    letter-spacing: .02em;
+    pointer-events: none;
+  }
+  .readout { white-space: pre; }
+
+  /* ---------- step lamps ---------- */
+
+  .steps {
+    flex: none;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 14px;
+    position: relative;
+  }
+  .lamp {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--led-dim);
+    box-shadow: inset 0 1px 1px rgba(0,0,0,.6);
+  }
+  .lamp.beat { background: #6a3a2c; }
+  .lamp.on   { background: var(--led); box-shadow: 0 0 7px rgba(255,59,31,.9); }
+  .lamp.acc  { background: var(--led-acc); box-shadow: 0 0 9px rgba(255,210,74,.9); }
+
+  /* ---------- knobs ---------- */
+
+  .knobs {
+    flex: 1 1 auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    align-content: center;
+    padding: 2px 10px 0;
+    position: relative;
+  }
+  .pot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+  }
+  .dial {
+    width: 74px; height: 74px;
+    border-radius: 50%;
+    position: relative;
+    background:
+      radial-gradient(circle at 50% 32%, #3c3f44 0%, var(--knob) 52%, #191b1e 100%);
+    box-shadow:
+      0 2px 4px rgba(0,0,0,.45),
+      0 0 0 3px rgba(0,0,0,.14),
+      inset 0 1px 1px rgba(255,255,255,.14);
+  }
+  /* skirt ticks */
+  .dial::before {
+    content: "";
+    position: absolute; inset: -9px;
+    border-radius: 50%;
+    background:
+      conic-gradient(from 215deg,
+        rgba(0,0,0,.34) 0 .6deg, transparent .6deg 32.5deg,
+        rgba(0,0,0,.34) 32.5deg 33.1deg, transparent 33.1deg 65deg,
+        rgba(0,0,0,.34) 65deg 65.6deg, transparent 65.6deg 97.5deg,
+        rgba(0,0,0,.34) 97.5deg 98.1deg, transparent 98.1deg 130deg,
+        rgba(0,0,0,.34) 130deg 130.6deg, transparent 130.6deg 162.5deg,
+        rgba(0,0,0,.34) 162.5deg 163.1deg, transparent 163.1deg 195deg,
+        rgba(0,0,0,.34) 195deg 195.6deg, transparent 195.6deg 227deg,
+        rgba(0,0,0,.34) 227deg 227.6deg, transparent 227.6deg 360deg);
+    -webkit-mask: radial-gradient(circle, transparent 0 37px, #000 37px 43px, transparent 43px);
+    mask: radial-gradient(circle, transparent 0 37px, #000 37px 43px, transparent 43px);
+  }
+  .pointer {
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 3px; height: 32px;
+    margin-left: -1.5px;
+    transform-origin: 50% 100%;
+    border-radius: 2px;
+    background: linear-gradient(#ff8a44, var(--trace));
+    box-shadow: 0 0 5px rgba(255,106,31,.5);
+    transform: translateY(-100%) rotate(-135deg);
+  }
+  .pot .cap {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .15em;
+    color: var(--ink);
+    text-transform: uppercase;
+  }
+  .pot .val {
+    font: 500 11px/1 ui-monospace, "SF Mono", Menlo, monospace;
+    color: var(--ink-soft);
+    margin-top: -4px;
+  }
+  .pot.live .cap { color: #b8431a; }
+
+  /* ---------- footer ---------- */
+
+  footer {
+    flex: none;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    letter-spacing: 0;
+    color: var(--ink-soft);
+    white-space: nowrap;
   }
 
-  .panel {
-    background: var(--panel);
-    border-radius: 3px;
-    padding: 12px 13px 14px;
-    margin-bottom: 10px;
+  /* ---------- start gate ---------- */
+
+  #gate {
+    position: fixed; inset: 0;
+    background: var(--window);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    z-index: 40;
+    padding: 0 34px;
+    text-align: center;
   }
-  .panel h2 {
-    font-size: 12px; font-weight: 600; color: var(--orange);
-    margin: 0 0 9px; letter-spacing: .01em;
+  #gate h1 {
+    font-size: 15px; font-weight: 700;
+    letter-spacing: .3em;
+    color: var(--trace);
   }
-
-  .row { display: flex; justify-content: space-between; gap: 10px; padding: 2px 0; }
-  .row span:first-child { color: #8d8b85; font-size: 12px; }
-  .num { font: 500 13px/1.4 ui-monospace, Menlo, monospace; }
-
-  #gpid {
-    font: 400 11px/1.4 ui-monospace, Menlo, monospace;
-    color: #cfcdc6; word-break: break-all; margin-top: 6px;
+  #gate p {
+    font-size: 13px; line-height: 1.7;
+    color: #8c8176;
+    font-weight: 400;
   }
-
-  .btns { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; margin-top: 4px; }
-  .b {
-    aspect-ratio: 1; border-radius: 2px;
-    background: #232527; color: #55585b;
-    display: grid; place-items: center;
-    font: 500 11px ui-monospace, Menlo, monospace;
+  #gate .pulse {
+    width: 44px; height: 44px; border-radius: 50%;
+    border: 2px solid var(--trace);
+    animation: pulse 1.5s ease-in-out infinite;
   }
-  .b.on { background: var(--led); color: #fff; }
-
-  .ax { margin-top: 7px; }
-  .ax .bar { height: 5px; background: #232527; border-radius: 3px; position: relative; margin-top: 3px; }
-  .ax .bar i {
-    position: absolute; top: -2px; width: 9px; height: 9px; border-radius: 50%;
-    background: var(--orange); left: 50%; margin-left: -4.5px;
+  @keyframes pulse {
+    0%, 100% { opacity: .25; transform: scale(.86); }
+    50%      { opacity: 1;   transform: scale(1); }
   }
+  #gate.gone { display: none; }
+  #err { color: #d4542a; font-size: 12px; line-height: 1.6; }
 
-  #order {
-    font: 500 12px/1.7 ui-monospace, Menlo, monospace;
-    color: #cfcdc6; min-height: 1.7em;
+  @media (prefers-reduced-motion: reduce) {
+    .pulse { animation: none; opacity: .8; }
   }
-  #order .none { color: #66645f; font-family: inherit; font-size: 12px; }
-
-  .state { display: flex; align-items: center; gap: 7px; font-size: 13px; }
-  .led { width: 9px; height: 9px; border-radius: 50%; background: var(--led-off); flex: none; }
-  .led.on { background: var(--led); box-shadow: 0 0 7px rgba(255,59,31,.75); }
-
-  button {
-    font: 600 15px/1 inherit; color: #17181a; background: var(--orange);
-    border: 0; border-radius: 3px; padding: 15px 18px; width: 100%;
-    margin-top: 10px;
-  }
-  button:disabled { background: #3a3c3f; color: #77797c; }
-  button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
-
-  p.note { font-size: 12px; color: #8d8b85; margin: 8px 0 0; }
-  .filt { display: flex; gap: 12px; margin-top: 10px; }
-  .filt div { flex: 1; }
-  .filt .num { font-size: 19px; color: var(--orange); }
 </style>
 </head>
 <body>
-<div class="ruler" id="ruler"></div>
-<main>
-  <h1>FlipPad probe <span id="ver"></span></h1>
 
-  <section class="panel">
-    <h2>画面</h2>
-    <div class="row"><span>viewport (CSS px)</span><span class="num" id="vp">–</span></div>
-    <div class="row"><span>devicePixelRatio</span><span class="num" id="dpr">–</span></div>
-    <div class="row"><span>screen</span><span class="num" id="scr">–</span></div>
-    <div class="row"><span>safe area 下</span><span class="num" id="safe">–</span></div>
-    <p class="note">右の目盛りは上端からの CSS px。パッドを下ろした状態で、見えている一番下が何 px か読んでください。</p>
-  </section>
+<div id="rig" aria-hidden="true">
+  <header>
+    <span class="wordmark">FLIP ACID<em id="ver"></em></span>
+    <span id="layer">CUTOFF / RESO</span>
+  </header>
 
-  <section class="panel">
-    <h2>コントローラ</h2>
-    <div class="state"><i class="led" id="gpled"></i><span id="gpstate">未接続 — ボタンをどれか押してください</span></div>
-    <div id="gpid"></div>
-    <div class="row" style="margin-top:8px"><span>mapping</span><span class="num" id="mapping">–</span></div>
-    <div class="btns" id="btns"></div>
-    <div class="ax" id="axes"></div>
-  </section>
+  <div class="window">
+    <canvas id="scope"></canvas>
+    <div class="readout" id="readout"></div>
+  </div>
 
-  <section class="panel">
-    <h2>押した順</h2>
-    <div id="order"><span class="none">A → B → X → Y → L1 → L2 → R1 → R2 → Select → Start の順に押すと対応表になります</span></div>
-  </section>
+  <div class="steps" id="steps"></div>
 
-  <section class="panel">
-    <h2>音</h2>
-    <div class="state"><i class="led" id="auled"></i><span id="austate">停止中</span></div>
-    <button id="gpstart">パッドのボタンで鳴らせるか試す</button>
-    <button id="tapstart">画面タップで鳴らす</button>
-    <div class="filt">
-      <div><span class="row"><span>cutoff</span></span><div class="num" id="fc">–</div></div>
-      <div><span class="row"><span>resonance</span></span><div class="num" id="fq">–</div></div>
-    </div>
-    <p class="note">鳴ったら十字キーで。上下 = cutoff、左右 = resonance。</p>
-  </section>
-</main>
+  <div class="knobs">
+    <div class="pot" data-k="cut"><div class="dial"><i class="pointer"></i></div><span class="cap">cutoff</span><span class="val"></span></div>
+    <div class="pot" data-k="res"><div class="dial"><i class="pointer"></i></div><span class="cap">resonance</span><span class="val"></span></div>
+    <div class="pot" data-k="env"><div class="dial"><i class="pointer"></i></div><span class="cap">env mod</span><span class="val"></span></div>
+    <div class="pot" data-k="dec"><div class="dial"><i class="pointer"></i></div><span class="cap">decay</span><span class="val"></span></div>
+  </div>
 
+  <footer id="foot">A 新パターン · B 波形 · SELECT 自動変化 · START 停止 · L2 画面の高さ</footer>
+</div>
+
+<div id="gate">
+  <h1>FLIP ACID</h1>
+  <div class="pulse"></div>
+  <p>パッドのボタンをどれか押すと鳴りはじめます。<br>画面をタップしても始まります。</p>
+  <p id="err"></p>
+</div>
+
+
+<!-- ============ UI : runs on the main thread ============ -->
 <script>
 (function () {
   "use strict";
 
-  /* ---- version : ここだけ書き換える ---- */
-  var VERSION = "v0.0.1";
+  var VERSION = "v0.1.0";
   document.getElementById("ver").textContent = VERSION;
-  document.title = "FlipPad probe " + VERSION;
 
-  /* ---- ruler ---- */
-  var ruler = document.getElementById("ruler");
-  function drawRuler() {
-    ruler.innerHTML = "";
-    for (var y = 50; y < window.innerHeight; y += 50) {
-      var b = document.createElement("b");
-      b.style.top = y + "px";
-      b.textContent = y;
-      ruler.appendChild(b);
-    }
+  /* cache the whole thing, so it still plays with no signal */
+  if ("serviceWorker" in navigator && location.protocol !== "file:") {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("sw.js").catch(function () {});
+    });
   }
 
-  /* ---- screen readout ---- */
-  var probe = document.createElement("div");
-  probe.style.cssText = "position:fixed;bottom:0;height:env(safe-area-inset-bottom);width:0;";
-  document.body.appendChild(probe);
+  /* ---------------- the visible strip ---------------- */
 
-  function screenInfo() {
-    document.getElementById("vp").textContent = window.innerWidth + " × " + window.innerHeight;
-    document.getElementById("dpr").textContent = String(window.devicePixelRatio || 1);
-    document.getElementById("scr").textContent = screen.width + " × " + screen.height;
-    document.getElementById("safe").textContent =
-      Math.round(probe.getBoundingClientRect().height) + " px";
-    drawRuler();
-  }
-  screenInfo();
-  window.addEventListener("resize", screenInfo);
-  window.addEventListener("orientationchange", function () { setTimeout(screenInfo, 250); });
+  /* How much screen the pad leaves showing. Measured at 575 on a 16 Pro Max;
+     L2 + up/down trims it on the device and it sticks from then on. */
+  var lid = 575;
+  try {
+    var saved = parseInt(localStorage.getItem("flipacid.lid"), 10);
+    if (saved >= 320 && saved <= 1200) lid = saved;
+  } catch (e) {}
+  var q = location.search.match(/[?&]lid=(\d+)/);
+  if (q) lid = Math.max(320, Math.min(1200, parseInt(q[1], 10)));
 
-  /* ---- button / axis display ---- */
-  var SLOTS = 18, cells = [], btnBox = document.getElementById("btns");
-  for (var i = 0; i < SLOTS; i++) {
-    var c = document.createElement("div");
-    c.className = "b";
-    c.textContent = i;
-    btnBox.appendChild(c);
-    cells.push(c);
+  document.documentElement.style.setProperty("--lid", Math.round(lid) + "px");
+
+  var lidSaveAt = 0;
+  function setLid(px) {
+    lid = Math.max(320, Math.min(window.innerHeight || 1200, px));
+    document.documentElement.style.setProperty("--lid", Math.round(lid) + "px");
+    sizeCanvas();
+    lidSaveAt = performance.now() + 800;
   }
 
-  var axBox = document.getElementById("axes"), axRows = [];
-  function ensureAxes(n) {
-    while (axRows.length < n) {
-      var i = axRows.length;
-      var wrap = document.createElement("div");
-      wrap.innerHTML = '<div class="row"><span>axis ' + i +
-        '</span><span class="num">0.00</span></div><div class="bar"><i></i></div>';
-      axBox.appendChild(wrap);
-      axRows.push({ val: wrap.querySelector(".num"), dot: wrap.querySelector("i") });
-    }
+  /* ---------------- parameters ---------------- */
+
+  var P = {
+    cut: { v: 0.42, lo: 70,   hi: 9000, log: true,  cap: "cutoff"    },
+    res: { v: 0.64, lo: 0,    hi: 1,    log: false, cap: "resonance" },
+    env: { v: 0.55, lo: 0,    hi: 1,    log: false, cap: "env mod"   },
+    dec: { v: 0.38, lo: 0,    hi: 1,    log: false, cap: "decay"     },
+    bpm: { v: 0.42, lo: 92,   hi: 168,  log: false, cap: "tempo"     },
+    acc: { v: 0.60, lo: 0,    hi: 1,    log: false, cap: "accent"    }
+  };
+
+  function real(k) {
+    var p = P[k];
+    return p.log
+      ? p.lo * Math.pow(p.hi / p.lo, p.v)
+      : p.lo + (p.hi - p.lo) * p.v;
   }
 
-  /* ---- press order log ---- */
-  var seen = [], orderEl = document.getElementById("order");
-  function logPress(label) {
-    if (seen.indexOf(label) !== -1) return;
-    seen.push(label);
-    orderEl.textContent = seen.join("  ·  ");
+  /* layers: which pair the d-pad drives */
+  var LAYERS = [
+    { tag: "CUTOFF / RESO",   y: "cut", x: "res" },
+    { tag: "ENV MOD / DECAY", y: "env", x: "dec" },
+    { tag: "TEMPO / ACCENT",  y: "bpm", x: "acc" },
+    { tag: "画面の高さ",       y: null,  x: null }   /* L2: fit to the pad */
+  ];
+  var layer = 0;
+
+  /* ---------------- audio ---------------- */
+
+  var ctx = null, node = null, started = false;
+  var live = { s: -1, f: 420, e: 0, a: 0, p: null };
+
+  function send(t, k, v) {
+    if (node) node.port.postMessage({ t: t, k: k, v: v });
+  }
+  function push(k) { send("p", k, real(k)); }
+
+  function boot(how) {
+    if (started) return;
+    started = true;
+
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) { fail("このブラウザは Web Audio に対応していません。"); return; }
+
+    try { ctx = new AC({ latencyHint: "interactive" }); }
+    catch (e) { fail("AudioContext を作れませんでした。"); return; }
+
+    ctx.audioWorklet.addModule("acid.js").then(function () {
+      node = new AudioWorkletNode(ctx, "acid", { outputChannelCount: [1] });
+      node.port.onmessage = function (ev) {
+        var d = ev.data;
+        live.s = d.s; live.f = d.f; live.e = d.e; live.a = d.a;
+        if (d.p) live.p = d.p;
+      };
+      node.connect(ctx.destination);
+      ["cut", "res", "env", "dec", "bpm", "acc"].forEach(push);
+      return ctx.resume();
+    }).then(function () {
+      document.getElementById("gate").classList.add("gone");
+      document.getElementById("rig").setAttribute("aria-hidden", "false");
+    }).catch(function (e) {
+      fail("音の初期化に失敗しました（" + how + "）: " + (e && e.message ? e.message : e));
+    });
   }
 
-  /* ---- audio ---- */
-  var ctx = null, osc = null, filt = null, amp = null, seqTimer = null;
-  var cutoff = 900, reso = 12;
-  var auled = document.getElementById("auled"), austate = document.getElementById("austate");
-
-  function startAudio(how) {
-    if (ctx) return true;
-    try {
-      var AC = window.AudioContext || window.webkitAudioContext;
-      ctx = new AC();
-    } catch (e) {
-      austate.textContent = "AudioContext を作れませんでした";
-      return false;
-    }
-    osc = ctx.createOscillator();
-    osc.type = "sawtooth";
-    osc.frequency.value = 55;
-
-    filt = ctx.createBiquadFilter();
-    filt.type = "lowpass";
-    filt.frequency.value = cutoff;
-    filt.Q.value = reso;
-
-    amp = ctx.createGain();
-    amp.gain.value = 0;
-
-    osc.connect(filt); filt.connect(amp); amp.connect(ctx.destination);
-    osc.start();
-
-    var notes = [55, 55, 82.4, 55, 73.4, 55, 110, 61.7];
-    var step = 0;
-    seqTimer = setInterval(function () {
-      var t = ctx.currentTime;
-      osc.frequency.setTargetAtTime(notes[step % notes.length], t, 0.008);
-      amp.gain.cancelScheduledValues(t);
-      amp.gain.setValueAtTime(0.0001, t);
-      amp.gain.exponentialRampToValueAtTime(0.22, t + 0.005);
-      amp.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
-      step++;
-    }, 150);
-
-    ctx.resume();
-    auled.classList.add("on");
-    austate.textContent = "鳴っています（起動 : " + how + "）";
-    document.getElementById("gpstart").disabled = true;
-    document.getElementById("tapstart").disabled = true;
-    updateFilter();
-    return true;
+  function fail(msg) {
+    started = false;
+    document.getElementById("err").textContent = msg;
   }
 
-  document.getElementById("tapstart").addEventListener("click", function () {
-    startAudio("画面タップ");
+  document.getElementById("gate").addEventListener("click", function () { boot("tap"); });
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden && ctx && ctx.state === "suspended") ctx.resume();
   });
 
-  var armed = false;
-  document.getElementById("gpstart").addEventListener("click", function () {
-    armed = true;
-    this.textContent = "パッドのボタンを押してください…";
+  /* ---------------- step lamps ---------------- */
+
+  var lamps = [], stepBox = document.getElementById("steps");
+  for (var i = 0; i < 16; i++) {
+    var l = document.createElement("i");
+    l.className = "lamp" + (i % 4 === 0 ? " beat" : "");
+    stepBox.appendChild(l);
+    lamps.push(l);
+  }
+
+  /* ---------------- knobs ---------------- */
+
+  var pots = {};
+  Array.prototype.forEach.call(document.querySelectorAll(".pot"), function (el) {
+    pots[el.dataset.k] = {
+      root: el,
+      ptr: el.querySelector(".pointer"),
+      cap: el.querySelector(".cap"),
+      val: el.querySelector(".val")
+    };
   });
 
-  function updateFilter() {
-    document.getElementById("fc").textContent = Math.round(cutoff) + " Hz";
-    document.getElementById("fq").textContent = reso.toFixed(1);
-    if (filt) {
-      filt.frequency.setTargetAtTime(cutoff, ctx.currentTime, 0.01);
-      filt.Q.setTargetAtTime(reso, ctx.currentTime, 0.01);
+  function fmt(k) {
+    var r = real(k);
+    if (k === "cut") return (r >= 1000 ? (r / 1000).toFixed(2) + "k" : Math.round(r)) + " Hz";
+    if (k === "bpm") return Math.round(r) + " BPM";
+    if (k === "dec") return Math.round(35 * Math.pow(1.5 / 0.035, P.dec.v)) + " ms";
+    return Math.round(P[k].v * 100) + "";
+  }
+
+  /* the four dials: the first two never move, the back pair follows the layer */
+  var SLOTS = ["cut", "res", "env", "dec"];
+  var knobSig = "";
+
+  function paintKnobs() {
+    var L = LAYERS[layer];
+    var shown = (layer === 2) ? ["cut", "res", "bpm", "acc"] : SLOTS;
+
+    var sig = layer + "|";
+    for (var s = 0; s < 4; s++) sig += P[shown[s]].v.toFixed(4) + ",";
+    if (sig === knobSig) return;
+    knobSig = sig;
+
+    for (var i = 0; i < 4; i++) {
+      var k = shown[i];
+      var pot = pots[SLOTS[i]];
+      pot.ptr.style.transform =
+        "translateY(-100%) rotate(" + (-135 + P[k].v * 270) + "deg)";
+      pot.cap.textContent = P[k].cap;
+      pot.val.textContent = fmt(k);
+      pot.root.classList.toggle("live", k === L.x || k === L.y);
     }
   }
 
-  /* ---- poll ---- */
-  var prev = [], held = {}, last = performance.now();
+  /* ---------------- scope ---------------- */
 
-  function pads() {
-    var g = navigator.getGamepads ? navigator.getGamepads() : [];
-    for (var i = 0; i < g.length; i++) if (g[i]) return g[i];
+  var cvs = document.getElementById("scope"), g2 = cvs.getContext("2d");
+  var cw = 0, chh = 0;
+
+  function sizeCanvas() {
+    var r = cvs.getBoundingClientRect();
+    var dpr = Math.min(window.devicePixelRatio || 1, 3);
+    cw = r.width; chh = r.height;
+    cvs.width = Math.round(cw * dpr);
+    cvs.height = Math.round(chh * dpr);
+    g2.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  var F_LO = 24, F_HI = 18000, LOG_LO = Math.log(F_LO), LOG_SPAN = Math.log(F_HI) - LOG_LO;
+
+  function xOf(f) { return (Math.log(f) - LOG_LO) / LOG_SPAN * cw; }
+
+  /* |H| of a 3-pole ladder with feedback k, cutoff fc */
+  function mag(f, fc, k) {
+    var w = f / fc;
+    /* one pole: 1/(1+jw) */
+    var d = 1 + w * w;
+    var re = 1 / d, im = -w / d;
+    /* cube it */
+    var re2 = re * re - im * im, im2 = 2 * re * im;
+    var re3 = re2 * re - im2 * im, im3 = re2 * im + im2 * re;
+    /* H = G3 / (1 + k G3) */
+    var dr = 1 + k * re3, di = k * im3;
+    var dd = dr * dr + di * di;
+    if (dd < 1e-12) return 60;
+    var hr = (re3 * dr + im3 * di) / dd;
+    var hi = (im3 * dr - re3 * di) / dd;
+    /* same makeup the DSP applies, so the trace matches what you hear */
+    return Math.sqrt(hr * hr + hi * hi) * (1 + k * 0.25);
+  }
+
+  var DB_TOP = 22, DB_BOT = -46;
+  function yOf(db) {
+    if (db > DB_TOP) db = DB_TOP;
+    if (db < DB_BOT) db = DB_BOT;
+    return (DB_TOP - db) / (DB_TOP - DB_BOT) * chh;
+  }
+
+  function curve(fc, k, color, width, alpha) {
+    g2.beginPath();
+    for (var px = 0; px <= cw; px += 2) {
+      var f = Math.exp(LOG_LO + px / cw * LOG_SPAN);
+      var db = 20 * Math.log(mag(f, fc, k)) / Math.LN10;
+      var y = yOf(db);
+      if (px === 0) g2.moveTo(px, y); else g2.lineTo(px, y);
+    }
+    g2.globalAlpha = alpha;
+    g2.strokeStyle = color;
+    g2.lineWidth = width;
+    g2.lineJoin = "round";
+    g2.stroke();
+    g2.globalAlpha = 1;
+  }
+
+  function drawScope() {
+    g2.clearRect(0, 0, cw, chh);
+
+    /* grid: decade lines */
+    g2.strokeStyle = "#272b31";
+    g2.lineWidth = 1;
+    [100, 1000, 10000].forEach(function (f) {
+      var x = Math.round(xOf(f)) + 0.5;
+      g2.beginPath(); g2.moveTo(x, 0); g2.lineTo(x, chh); g2.stroke();
+    });
+    var y0 = Math.round(yOf(0)) + 0.5;
+    g2.beginPath(); g2.moveTo(0, y0); g2.lineTo(cw, y0); g2.stroke();
+
+    var k = P.res.v * 8.7;
+
+    /* where the knob sits, dimmed */
+    curve(real("cut"), k, "#6d4027", 1.5, 1);
+
+    /* where the envelope has pushed it, bright */
+    var fc = Math.max(28, Math.min(live.f, 18000));
+    curve(fc, k, "#ff6a1f", 2, 1);
+
+    /* cutoff marker */
+    var mx = xOf(fc);
+    g2.strokeStyle = "rgba(255,106,31,.3)";
+    g2.lineWidth = 1;
+    g2.beginPath(); g2.moveTo(mx, 0); g2.lineTo(mx, chh); g2.stroke();
+
+    g2.fillStyle = live.a ? "#ffd24a" : "#ff6a1f";
+    g2.beginPath(); g2.arc(mx, yOf(20 * Math.log(mag(fc, fc, k)) / Math.LN10), 3.5, 0, 6.2832);
+    g2.fill();
+  }
+
+  /* ---------------- gamepad ---------------- */
+
+  /* 8BitDo FlipPad reports mapping "" on iOS, so the indices are fixed by
+     hand from what the pad actually sent. If resonance turns the wrong way,
+     swap LEFT and RIGHT here and nothing else needs touching. */
+  var B = {
+    LEFT: 14, RIGHT: 15,
+    UP: 12, DOWN: 13,
+    A: 0, B: 1, X: 2, Y: 3,
+    L1: 4, L2: 6,
+    SELECT: 8, START: 9
+  };
+
+  /* The pad logged R1 and R2 as 7 and 5 in one pass and the usual 5 and 7 in
+     another, so which is which is still unsettled. R2 has no other job, so
+     either one opens the tempo layer and the question stops mattering. */
+  var R_MOD = [5, 7];
+
+  var prev = [], hold = { x: 0, y: 0 }, last = performance.now();
+  var wave = 0, running = true, autoMut = true;
+
+  function pad() {
+    var list = navigator.getGamepads ? navigator.getGamepads() : [];
+    for (var i = 0; i < list.length; i++) if (list[i]) return list[i];
     return null;
   }
 
-  function loop(now) {
+  function down(gp, i) { return !!(gp.buttons[i] && gp.buttons[i].pressed); }
+  function hit(gp, i)  { return down(gp, i) && !prev[i]; }
+
+  function turn(key, dir, dt, held) {
+    var p = P[key];
+    var rate = 0.15 + Math.min(held, 1.4) * 0.32;  /* accelerate while held */
+    p.v = Math.max(0, Math.min(1, p.v + dir * rate * dt));
+    push(key);
+  }
+
+  function readPad(dt) {
+    var gp = pad();
+    if (!gp) return;
+
+    if (!started) {
+      for (var i = 0; i < gp.buttons.length; i++) {
+        if (down(gp, i)) { boot("pad"); break; }
+      }
+    }
+
+    var up = down(gp, B.UP), dn = down(gp, B.DOWN);
+    var lf = down(gp, B.LEFT), rt = down(gp, B.RIGHT);
+
+    /* L2 turns the d-pad into a ruler for the strip the pad leaves showing */
+    if (down(gp, B.L2)) {
+      layer = 3;
+      if (up !== dn) setLid(lid + (up ? 70 : -70) * dt);
+      hold.x = hold.y = 0;
+      for (var b = 0; b < 18; b++) prev[b] = down(gp, b);
+      return;
+    }
+
+    /* otherwise the shoulders pick which pair the d-pad drives */
+    var rHeld = down(gp, R_MOD[0]) || down(gp, R_MOD[1]);
+    layer = down(gp, B.L1) ? 1 : (rHeld ? 2 : 0);
+    var L = LAYERS[layer];
+
+    if (up !== dn) { hold.y += dt; turn(L.y, up ? 1 : -1, dt, hold.y); } else hold.y = 0;
+    if (lf !== rt) { hold.x += dt; turn(L.x, rt ? 1 : -1, dt, hold.x); } else hold.x = 0;
+
+    if (hit(gp, B.A)) send("new");
+    if (hit(gp, B.B)) { wave ^= 1; send("wave", null, wave); }
+    if (hit(gp, B.SELECT)) { autoMut = !autoMut; send("mut", null, autoMut); }
+    if (hit(gp, B.START))  { running = !running; send("run", null, running); }
+
+    for (var j = 0; j < 18; j++) prev[j] = down(gp, j);
+  }
+
+  /* keyboard stand-in, so the thing can be built without the pad */
+  var keys = {};
+  window.addEventListener("keydown", function (e) {
+    if (!started) boot("key");
+    keys[e.key] = true;
+    if (e.key === "a") send("new");
+    if (e.key === "b") { wave ^= 1; send("wave", null, wave); }
+    if (e.key.indexOf("Arrow") === 0 || e.key === " ") e.preventDefault();
+  });
+  window.addEventListener("keyup", function (e) { keys[e.key] = false; });
+
+  function readKeys(dt) {
+    layer = keys["Shift"] ? 1 : (keys["Control"] ? 2 : 0);
+    var L = LAYERS[layer];
+    var up = !!keys["ArrowUp"], dn = !!keys["ArrowDown"];
+    var lf = !!keys["ArrowLeft"], rt = !!keys["ArrowRight"];
+    if (up !== dn) { hold.y += dt; turn(L.y, up ? 1 : -1, dt, hold.y); } else hold.y = 0;
+    if (lf !== rt) { hold.x += dt; turn(L.x, rt ? 1 : -1, dt, hold.x); } else hold.x = 0;
+  }
+
+  /* ---------------- loop ---------------- */
+
+  var lastStep = -1, lastLayer = -1, lastRead = "";
+  var layerEl = document.getElementById("layer");
+  var readEl  = document.getElementById("readout");
+
+  function frame(now) {
     var dt = Math.min((now - last) / 1000, 0.05);
     last = now;
 
-    var gp = pads();
-    var gpled = document.getElementById("gpled");
+    if (pad()) readPad(dt); else readKeys(dt);
 
-    if (gp) {
-      gpled.classList.add("on");
-      document.getElementById("gpstate").textContent = "接続中";
-      document.getElementById("gpid").textContent = gp.id;
-      document.getElementById("mapping").textContent = gp.mapping || "(空)";
-
-      for (var i = 0; i < cells.length; i++) {
-        var pressed = gp.buttons[i] && gp.buttons[i].pressed;
-        cells[i].classList.toggle("on", !!pressed);
-        if (pressed && !prev[i]) {
-          logPress("b" + i);
-          if (armed && !ctx) startAudio("パッドのボタン");
-        }
-        prev[i] = !!pressed;
-      }
-
-      ensureAxes(gp.axes.length);
-      for (var a = 0; a < gp.axes.length; a++) {
-        var v = gp.axes[a];
-        axRows[a].val.textContent = v.toFixed(2);
-        axRows[a].dot.style.left = (50 + v * 45) + "%";
-        if (Math.abs(v) > 0.7) logPress("ax" + a + (v > 0 ? "+" : "−"));
-      }
-
-      /* d-pad: axes 0/1 or buttons 12-15, whichever this pad reports */
-      var x = gp.axes.length > 0 ? gp.axes[0] : 0;
-      var y = gp.axes.length > 1 ? gp.axes[1] : 0;
-      if (gp.buttons[12] && gp.buttons[12].pressed) y = -1;
-      if (gp.buttons[13] && gp.buttons[13].pressed) y = 1;
-      if (gp.buttons[14] && gp.buttons[14].pressed) x = -1;
-      if (gp.buttons[15] && gp.buttons[15].pressed) x = 1;
-
-      if (ctx) {
-        var changed = false;
-        if (Math.abs(y) > 0.5) {
-          /* log sweep: octaves per second, accelerating while held */
-          held.y = (held.y || 0) + dt;
-          var rate = 1.6 + Math.min(held.y, 1.4) * 2.2;
-          cutoff *= Math.pow(2, -y * rate * dt);
-          cutoff = Math.max(80, Math.min(cutoff, 12000));
-          changed = true;
-        } else held.y = 0;
-
-        if (Math.abs(x) > 0.5) {
-          held.x = (held.x || 0) + dt;
-          var r = 6 + Math.min(held.x, 1.4) * 9;
-          reso = Math.max(0.5, Math.min(reso + x * r * dt, 28));
-          changed = true;
-        } else held.x = 0;
-
-        if (changed) updateFilter();
-      }
-    } else {
-      gpled.classList.remove("on");
-      document.getElementById("gpstate").textContent =
-        "未接続 — ボタンをどれか押してください";
+    if (layer === 3) {
+      layerEl.textContent = Math.round(lid) + " px";
+      layerEl.classList.add("hot");
+      lastLayer = -1;
+    } else if (layer !== lastLayer) {
+      lastLayer = layer;
+      layerEl.textContent = LAYERS[layer].tag;
+      layerEl.classList.toggle("hot", layer !== 0);
     }
 
-    requestAnimationFrame(loop);
-  }
-  requestAnimationFrame(loop);
+    if (lidSaveAt && now > lidSaveAt) {
+      lidSaveAt = 0;
+      try { localStorage.setItem("flipacid.lid", String(Math.round(lid))); } catch (e) {}
+    }
 
-  window.addEventListener("gamepadconnected", function () {});
+    if (started) {
+      drawScope();
+
+      if (live.s !== lastStep) {
+        lastStep = live.s;
+        for (var i = 0; i < 16; i++) {
+          var st = live.p ? live.p[i] : null;
+          lamps[i].className = "lamp" +
+            (i % 4 === 0 ? " beat" : "") +
+            (i === live.s && st && st.on ? (st.a ? " acc" : " on") : "");
+        }
+      }
+
+      var txt = "cut " + Math.round(live.f) + " Hz   res " +
+        Math.round(P.res.v * 100) + "   " + (wave ? "square" : "saw") +
+        (running ? "" : "   — 停止") + (autoMut ? "" : "   固定");
+      if (txt !== lastRead) { lastRead = txt; readEl.textContent = txt; }
+    }
+
+    paintKnobs();
+    requestAnimationFrame(frame);
+  }
+
+  window.addEventListener("resize", sizeCanvas);
+  sizeCanvas();
+  paintKnobs();
+  requestAnimationFrame(frame);
 })();
 </script>
 </body>
